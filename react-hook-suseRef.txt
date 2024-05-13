@@ -1,0 +1,578 @@
+-- React "Escape Hatches" --
+
+It is not uncommon for components to control and synchronize with systems outside of React, such as focusing an input using the browser API,
+playing or pausing videos in a video player not implemented with React, or connecting and listening to message from a remote server.
+
+React provides several tools it refers to as "escape hatches" that let you connect React to external systems,
+but the majority of your application logic and data flow should not rely on these systems.
+
+The escape hatch that we will discuss during this lesson is the useRef hook.
+
+When you want a component to remember information, but you don't want that information to trigger new renders (like with useState),
+you can use a ref (short for reference). Like state, refs are retained by React between renders. Unlike state, changing a ref does not trigger a new render.
+
+
+--- The useRef hook ---
+
+Before we can use useRef, we must import it:
+
+import { useRef } from 'react';
+The most basic call to useRef looks like the following. We pass the initial value that we want to reference as the only argument:
+
+const ref = useRef(0);
+We can then access the current value of the ref through the ref.current property, since useRef will return an object that looks like this:
+
+{
+  current: 0
+}
+This ref value is intentionally mutable, so that we can both read from it and write to it. These "escape hatches" like useRef are small 
+sections of your code that React doesn't keep track of, which allows them to break a few of the rules that we've discussed so far.
+
+The React documentation provides us with a very simple example of useRef in action. In the following code, we create a button that alerts 
+us to how many times we've clicked it using the value of ref. This value isn't state, so there's no reason to re-render the application, 
+but it is something we want to keep track of across renders.
+
+-- APP.JS --
+
+import { useRef } from 'react';
+
+export default function Counter() {
+  let ref = useRef(0);
+
+  function handleClick() {
+    ref.current = ref.current + 1;
+    alert('You clicked ' + ref.current + ' times!');
+  }
+
+  return (
+    <button onClick={handleClick}>
+      Click me!
+    </button>
+  );
+}
+
+If we didn't have the useRef hook, and instead simply set ref = { current: 0 }, it would be reset with every render of the application.
+
+While this ref points to a number, you can point to any type of value: strings, objects, arrays, functions. Ref is just a plain JavaScript 
+object with the current property that is both readable and modifiable.
+
+Let's look at an example of a stopwatch built by the React team.
+
+In this example, we display how much time has passed since the user clicked the "Start" button. In order to calculate this information,
+we will need to pieces of state: the time when the button was pressed (startTime), and the current time (now). This is state information, 
+not ref information, because it is used for rendering the "time passed" display.
+
+The example uses setInterval() to then update the now state information every 10 milliseconds.
+
+
+--APP.JS--
+import { useState } from 'react';
+
+export default function Stopwatch() {
+  const [startTime, setStartTime] = useState(null);
+  const [now, setNow] = useState(null);
+
+  function handleStart() {
+    // Start counting.
+    setStartTime(Date.now());
+    setNow(Date.now());
+
+    setInterval(() => {
+      // Update the current time every 10ms.
+      setNow(Date.now());
+    }, 10);
+  }
+
+  let secondsPassed = 0;
+  if (startTime != null && now != null) {
+    secondsPassed = (now - startTime) / 1000;
+  }
+
+  return (
+    <>
+      <h1>Time passed: {secondsPassed.toFixed(3)}</h1>
+      <button onClick={handleStart}>
+        Start
+      </button>
+    </>
+  );
+}
+
+It isn't much of a stopwatch without a "stop," is it?
+
+In order to add a "Stop" button, we need to cancel the existing setInterval so that it stops updating the now state. We can do this by calling clearInterval,
+
+but in order to do so we need to pass it a reference to the interval we want to clear. Let's try this:
+
+--APP.JS--
+import { useState, useRef } from "react";
+
+export default function Stopwatch() {
+  const [startTime, setStartTime] = useState(null);
+  const [now, setNow] = useState(null);
+  const intervalRef = {};
+
+  function handleStart() {
+    setStartTime(Date.now());
+    setNow(Date.now());
+
+    clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setNow(Date.now());
+    }, 10);
+  }
+
+  function handleStop() {
+    console.log(intervalRef.current);
+    clearInterval(intervalRef.current);
+  }
+
+  let secondsPassed = 0;
+  if (startTime != null && now != null) {
+    secondsPassed = (now - startTime) / 1000;
+  }
+
+  return (
+    <>
+      <h1>Time passed: {secondsPassed.toFixed(3)}</h1>
+      <button onClick={handleStart}>Start</button>
+      <button onClick={handleStop}>Stop</button>
+    </>
+  );
+}
+
+f we try stopping the stopwatch, it... doesn't work. If you check the console, you'll notice it is logging undefined for the value of intervalRef.current within handleStop().
+
+This is because, as mentioned before, regular variables don't persist across renders. 
+During one render, we set intervalRef.current to the setInterval reference, but during the next render it gets reset by const intervalRef = {},
+ resulting in an undefined value for current.
+
+Change the definition of intervalRef to use useRef with an initial value of null and test the code again!
+
+Here's a general rule of thumb when deciding between state data and reference data:
+
+
+
+-----If a piece of information is used for rendering, keep it in state.
+
+-----If changing a piece of information doesn't require a re-render, using a ref may be more efficient.
+
+
+
+Refs are typically used within event handlers.
+
+
+-Contrasting Refs and State-
+
+In most cases, using state is the correct course of action. 
+While refs seem less strict than state due to their mutability, state provides the bread and butter of React applications. 
+\Refs are, as described before, an "escape hatch" that shouldn't be overused.
+
+Here's a comparison between refs and state provided by the React team:
+
+refs	
+  -useRef(initialValue) returns { current: initialValue }
+  -Doesn’t trigger re-render when you change it.
+  -Mutable — you can modify and update current’s value outside of the rendering process.	
+  -You shouldn’t read (or write) the current value during rendering.	
+
+state
+	-useState(initialValue) returns the current value of a state variable and a state setter function ([value, setValue])
+	-Triggers re-render when you change it.
+  -“Immutable” — you must use the state setting function to modify state variables to queue a re-render.
+  -You can read state at any time. However, each render has its own snapshot of state which does not change.
+
+  Of the table above, one of the most important things to remember is that reading ref.current during render can lead to inaccurate results and unreliable code.
+   If you need a value during render, use state instead.
+   
+-Use Cases for Refs-
+
+Refs are most commonly used in conjunction with external APIs, like browser APIs that won't impact the appearance of a component.
+
+We've already seen an example of this with storing setTimeout IDs, but you can also use refs to store and manipulate DOM elements or other objects
+ that aren't necessary for calculating the render state.
+
+We will discuss manipulating the DOM with refs shortly.
+
+-Ref Best Practices-
+
+If you think about refs as simple variables that persist across renders, that will guide you in the correct direction for using them properly. Refs aren't state information,
+they don't store what your application should look like, they're just basic JavaScript objects that don't lose their values on re-render.
+
+Treat them as an escape hatch. They are useful for working with external systems or browser APIs,
+ but they shouldn't be used as the primary driver for a React application. If you find that most of your data flow and application logic uses refs,
+  you may want to consider a different approach.
+
+Also, don't read or write to refs during rendering. If the information is required for rendering, it should be a piece of state.
+ React doesn't know when refs change, so reading from refs during the rendering process makes behavior difficult to predict and control.
+
+Since the limitations of typical React tools don't apply to refs, you don't need to worry about things like avoiding mutation when working with refs.
+ As long as the object you are mutating isn't used during renders, React doesn't care.
+
+--- DOM Manipulations with Refs ----
+
+While refs can point to any kind of value, the most common use case is accessing DOM elements. When you pass ref as a prop to a JSX element in react,
+ React puts the cooresponding DOM element into myRef.current!
+
+This behavior enables a wide variety of options, but some of the most common ones are:
+
+Focusing a node.
+Scrolling to nodes.
+Measuring node size or position.
+While React handles the vast majority of DOM building and manipulation for us, sometimes components and event handlers need to handle some of these small tasks manually.
+ This is where refs come into play.
+
+Think of the useRef hook kind of like document.querySelector: it allows you to assign a DOM node to a variable so you can access its properties. 
+React's declarative nature (express what you want, not how to make it) makes it hard to write normal imperative (how to make the thing step by step) DOM code.
+
+Here are a couple of examples of the common uses for refs:
+
+--APP.JS--
+
+import { useRef } from "react";
+
+export default function Form() {
+  const inputRef = useRef(null);
+
+  function handleClick() {
+    inputRef.current.focus();
+  }
+
+  return (
+    <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginTop: "50px"
+        }}
+      >
+        <input
+          ref={inputRef}
+          style={{
+            width: "250px",
+            padding: "5px"
+          }}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginTop: "10px"
+        }}
+      >
+        <button
+          onClick={handleClick}
+          style={{
+            width: "250px",
+            padding: "5px",
+            cursor: "pointer"
+          }}
+        >
+          Focus the Input Element
+        </button>
+      </div>
+    </>
+  );
+}
+
+In the example above, the following code sets the <input> DOM element created by the JSX and React to the variable reference inputRef:
+
+const inputRef = useRef(null);
+// ...
+<input ref={inputRef} />
+
+From there, any DOM methods can be called on the <input> node being stored in inputRef. 
+In the case of the example above, we call focus() within the button element's onClick handler, handleClick.
+
+Here's another common usage provided by the React documentation - scrolling:
+
+APP.JS example
+
+import { useRef } from 'react';
+
+export default function CatFriends() {
+  const firstCatRef = useRef(null);
+  const secondCatRef = useRef(null);
+  const thirdCatRef = useRef(null);
+
+  function handleScrollToFirstCat() {
+    firstCatRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center'
+    });
+  }
+
+  function handleScrollToSecondCat() {
+    secondCatRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center'
+    });
+  }
+
+  function handleScrollToThirdCat() {
+    thirdCatRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center'
+    });
+  }
+
+  return (
+    <>
+      <nav>
+        <button onClick={handleScrollToFirstCat}>
+          Tom
+        </button>
+        <button onClick={handleScrollToSecondCat}>
+          Maru
+        </button>
+        <button onClick={handleScrollToThirdCat}>
+          Jellylorum
+        </button>
+      </nav>
+      <div>
+        <ul>
+          <li>
+            <img
+              src="https://placekitten.com/g/200/200"
+              alt="Tom"
+              ref={firstCatRef}
+            />
+          </li>
+          <li>
+            <img
+              src="https://placekitten.com/g/300/200"
+              alt="Maru"
+              ref={secondCatRef}
+            />
+          </li>
+          <li>
+            <img
+              src="https://placekitten.com/g/250/200"
+              alt="Jellylorum"
+              ref={thirdCatRef}
+            />
+          </li>
+        </ul>
+      </div>
+    </>
+  );
+}
+
+This example uses multiple refs to create a carousel of three images, with buttons that use the DOM's scrollIntoView method to bring each picture into view when 
+its cooresponding button is pressed.
+
+
+-- Ref Callbacks --
+It is unlikely that you will have a static, pre-defined number of elements in a use-case like the carousel example above. 
+You can circumvent this issue by passing a function to the ref, called a ref callback.
+
+React will call the ref callback with the associated DOM node when it is time to set the ref, which allows you to create and maintain your own array or map of refs,
+and access any ref by its index (or some other unique ID).
+
+Below is an example that allows you to scroll to an arbitrary node within a longer list of unknown length. itemRef no longer holds a single DOM node, 
+but rather a Map object that maps each item ID to a DOM node. The ref callback on every list item updates the Map, which lets us read individuals DOM nodes later.
+
+APP.JS example
+import { useRef } from "react";
+
+export default function CatFriends() {
+  const itemsRef = useRef(null);
+
+  function scrollToId(itemId) {
+    const map = getMap();
+    const node = map.get(itemId);
+    node.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center"
+    });
+  }
+
+  function getMap() {
+    if (!itemsRef.current) {
+      // Initialize the Map on first usage.
+      itemsRef.current = new Map();
+    }
+    return itemsRef.current;
+  }
+
+  return (
+    <>
+      <nav>
+        <button onClick={() => scrollToId(0)}>Tom</button>
+        <button onClick={() => scrollToId(5)}>Maru</button>
+        <button onClick={() => scrollToId(9)}>Jellylorum</button>
+      </nav>
+      <div>
+        <ul>
+          {catList.map((cat) => (
+            <li
+              key={cat.id}
+              ref={(node) => {
+                const map = getMap();
+                if (node) {
+                  map.set(cat.id, node);
+                } else {
+                  map.delete(cat.id);
+                }
+              }}
+            >
+              <img src={cat.imageUrl} alt={"Cat #" + cat.id} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+
+const catList = [];
+for (let i = 0; i < 10; i++) {
+  catList.push({
+    id: i,
+    imageUrl: "https://placekitten.com/250/200?image=" + i
+  });
+}
+
+Using these concepts, we can build some of the most commonly-seen and most popular React components on the web.
+
+Here's a simple but adaptable Carousel component built using similar logic to the example above:
+
+import { useRef } from "react";
+
+export default function ImageCarousel({ list }) {
+  const itemsRef = useRef(null);
+  const indexRef = useRef(0);
+
+  function scrollTo(dir) {
+    const arr = getList();
+
+    let node = null;
+    switch (dir) {
+      case "next": {
+        if (indexRef.current < arr.length) {
+          node = arr[++indexRef.current];
+        }
+        break;
+      }
+      case "prev": {
+        if (indexRef.current >= 0) {
+          node = arr[--indexRef.current];
+        }
+        break;
+      }
+      default:
+        break;
+    }
+
+    try {
+      node.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center"
+      });
+    } catch (e) {}
+  }
+
+  function getList() {
+    if (!itemsRef.current) itemsRef.current = [];
+    return itemsRef.current;
+  }
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        margin: "0",
+        padding: "0",
+        position: "relative",
+        userSelect: "none"
+      }}
+    >
+      <nav
+        style={{
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
+        <span
+          onClick={() => scrollTo("prev")}
+          style={{
+            fontSize: "50px",
+            color: "black",
+            cursor: "pointer",
+            backgroundColor: "lightgray",
+            height: "100%",
+            display: "flex",
+            alignItems: "center"
+          }}
+        >
+          ⮜
+        </span>
+        <span
+          onClick={() => scrollTo("next")}
+          style={{
+            fontSize: "50px",
+            color: "black",
+            cursor: "pointer",
+            backgroundColor: "lightgray",
+            height: "100%",
+            display: "flex",
+            alignItems: "center"
+          }}
+        >
+          ⮞
+        </span>
+      </nav>
+      <div
+        style={{
+          width: "100%",
+          overflow: "hidden"
+        }}
+      >
+        <ul
+          style={{
+            listStyle: "none",
+            whiteSpace: "nowrap",
+            padding: "0 50px"
+          }}
+        >
+          {list.map((e) => (
+            <li
+              key={e.id}
+              ref={(node) => {
+                const arr = getList();
+                if (node) arr.push(node);
+              }}
+              style={{
+                listStyle: "none",
+                whiteSpace: "nowrap",
+                display: "inline",
+                padding: "0.5rem"
+              }}
+            >
+              <img src={e.imageUrl} alt={e.id} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+
+Note that this carousel is very simple and quite limited, but it serves its specific purpose. 
+There are many other pre-built carousel components with customization options and a more robust structure available through a variety of channels.
+
+During development, you will often have to decide between building your own custom components that are tailored to your application's needs, or using pre-packages components
+ (and libraries) that accomplish the task for you, but might be bloated or not very performative for your purposes.
+
