@@ -1,4 +1,5 @@
 import {useState, useEffect} from "react";
+
 import "./App.css";
 
 import MovieDisplay from "./components/MovieDisplay";
@@ -6,7 +7,7 @@ import Form from "./components/Form";
 
 export default function App() {
   // Variable with your API Key
-  const apiKey = "dc5ecd41";
+  const apiKey = "98e3fb1f";
 
   // State to hold movie data
   const [movie, setMovie] = useState(null);

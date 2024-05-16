@@ -2,6 +2,7 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
+import Gallery from './components/Gallery'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -9,6 +10,9 @@ function App() {
   const add = () => {
    setCount(count + 1)
 
+    // use updated function to make sure it updates. But with the updater function it ques the callback functions and then uses the actual current stat value each time.
+    //setCount((count) => count+3)
+    // goes up by three
   }
   
   console.log('render')
@@ -18,6 +22,8 @@ function App() {
       Hello, (from React)
       <h1>{count}</h1>
       <button onClick={add}>Add</button>
+      <p> ||||||||||</p>
+      <Gallery />
     
     </>
   

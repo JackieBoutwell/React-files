@@ -12,6 +12,12 @@ export default function Gallery() {
     }
   }
 
+   function nextNextIndex() {
+     setIndex((index) => index + 1); 
+     //above code is an updater function to usestate
+    // setIndex(index + 1);
+  }
+
   function previous() {
     if (index > 0) { 
         setIndex(index - 1);
@@ -30,6 +36,7 @@ export default function Gallery() {
       <button onClick={handleClick}>
         Next
       </button>
+      <button onClick={nextNextIndex}>Next++ </button>
       <h2>
         <i>{sculpture.name} </i> 
         by {sculpture.artist}
