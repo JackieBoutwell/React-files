@@ -13,7 +13,12 @@ function App() {
   function reducer(state, action) { 
     switch (action.type) {
       case "add-task":
-        return[action.payload, ...state]
+        return [action.payload, ...state]
+      case "complete-task":
+        let match = state.find(eachTask => eachTask.id === action.payload.id)
+        let arrNoMatch = state.filter(eachTask => eachTask.id !== action.payload.id)
+        match.completed = action.payload.completed
+        return [match, ...arrNoMatch]
     }
     
   }
@@ -24,7 +29,7 @@ function App() {
     <>
       <h1>todo list</h1>
       <Addtask dispatch={dispatch} />
-      <Tasklist dispatch={dispatch} state={state} />
+      <Tasklist dispatch={dispatch} state={state}  />
     </>
   )
 }

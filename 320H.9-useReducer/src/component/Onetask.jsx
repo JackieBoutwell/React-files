@@ -1,13 +1,24 @@
-function Onetask(props) {
-    return (  
+import { useEffect } from "react";
+import { useState } from "react";
 
+
+function Onetask(props) {
+    const [checked, setChecked] = useState(props.completed)
+
+    useEffect(() => {
+        props.dispatch({ type: "complete-task", payload: { completed:checked, id:props.id} })
+    }, [checked])
+
+    return (  
         <div>
-        <input type="checkbox" checked={props.completed} name="create" id={props.title} />
-            <label for={props.title}> {props.title} </label>
+            <input onChange={() => setChecked(!checked)} type="checkbox" checked={checked} name="create" id={props.id} />
+            <label for={props.id}> {props.title} </label>
         <button>Edit</button>
-            <button disabled={props.completed}> Delete </button>
+            <button disabled={checked}> Delete </button>
         </div>
     );
 }
 
 export default Onetask;
+
+

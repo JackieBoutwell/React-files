@@ -7,7 +7,7 @@ function Tasklist(props) {
         <div>
             {
                 props.state.map((eachTask, index) => (
-                    <Onetask key={index} title={eachTask.title} completed={eachTask.completed} />
+                    <Onetask key={index} title={eachTask.title} completed={eachTask.completed} id={eachTask.id} dispatch={props.dispatch} />
                 ))
             }
         </div>
