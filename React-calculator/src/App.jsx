@@ -10,9 +10,10 @@ function App() {
 
   return (
     <>
-      <Calculator />
-
-    </>
+      <div> 
+        <Calculator />
+             </div>
+      </>
   )
 }
 
