@@ -19,6 +19,8 @@ function App() {
         let arrNoMatch = state.filter(eachTask => eachTask.id !== action.payload.id)
         match.completed = action.payload.completed
         return [match, ...arrNoMatch]
+      
+      // IF I'm setting the task as completed, return [...arrNoMatch, match], ELSE [match, ...arrNoMatch]
     }
     
   }
